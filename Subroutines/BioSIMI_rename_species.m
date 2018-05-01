@@ -1,9 +1,10 @@
-%% 07/09/2017 Miroslav Gasparek & Vipul Singhal
-%% Definition of the function that searches for common species in the species array of
-%% interconnection of two subsystems and amends them so that they have their initial names
-%% Serving as a prototype for creation of modularization framework of TX-TL modeling toolbox
-% Currently throuws out error if the single subsystem is passed into it
-function final_system = BioSIMI_rename_species_only(input_subsystem,final_system_name)
+%% 24/04/2017 Miroslav Gasparek & Vipul Singhal
+% Definition of the function that searches for common species in the species array of
+% interconnection of two subsystems and amends them so that they have their initial names
+% Serving as a prototype for creation of modularization framework of TX-TL modeling toolbox
+
+% Works for multiple-input/multiple-output subsystems
+function final_system = BioSIMI_rename_species(input_subsystem,final_system_name)
     
     % Get component subsystems belonging to the final system
     if isempty(input_subsystem.Components)
@@ -24,16 +25,11 @@ function final_system = BioSIMI_rename_species_only(input_subsystem,final_system
         % Create the final array of species
         spec_array = str_array{i};
         remove_array = cell2mat(spec_array);
+%% 
     else
         % Define string of  a subsystems' name and an underscore to be removed
-        if ~iscell(input_subsystem.Components)
-            for i = 1:size(input_subsystem.Components,2)
-                string{i} = [input_subsystem.Components(i).Name,'_'];
-            end
-        else
-            for i = 1:size(input_subsystem.Components,2)
-                string{i} = [input_subsystem.Components{i}.Name,'_'];
-            end
+        for i = 1:size(input_subsystem.Components,2)
+            string{i} = [input_subsystem.Components{i}.Name,'_'];
         end
         % Pre-allocate arrays for species' names
         for i = 1:size(input_subsystem.Components,2)
@@ -63,7 +59,6 @@ function final_system = BioSIMI_rename_species_only(input_subsystem,final_system
         % Find positions of the reduntant 'output' species of 'input'
         % subsystems
         out_array = [];
-        if iscell(input_subsystem.Components)
             for i = 1:size(input_subsystem.Components,2)
                 for j = 1:size(input_subsystem.Species,1)
                     if (strcmp(input_subsystem.Components{i}.Output.Name,input_subsystem.Species(j).Name) && ~strcmp(input_subsystem.Components{i}.Output.Name,input_subsystem.Output.Name))
@@ -71,15 +66,6 @@ function final_system = BioSIMI_rename_species_only(input_subsystem,final_system
                     end
                 end
             end
-        else
-            for i = 1:size(input_subsystem.Components,2)
-                for j = 1:size(input_subsystem.Species,1)
-                    if (strcmp(input_subsystem.Components(i).Output.Name,input_subsystem.Species(j).Name) && ~strcmp(input_subsystem.Components(i).Output.Name,input_subsystem.Output.Name))
-                        out_array(i) = j;
-                    end
-                end
-            end
-        end
         % Find positions of the species with the repeated name
         [equal,index_equal,~] = unique(spec_array,'stable');
         subsystem_vector = 1:size(input_subsystem.Species,1);
@@ -138,7 +124,6 @@ function final_system = BioSIMI_rename_species_only(input_subsystem,final_system
     % Add input of initial subsystem to created final subsystem and rename
     % it to remove its parent components subsystem's name
     final_system.Input = input_subsystem.Input;
-    if iscell(input_subsystem.Input)
         for j = 1:size(final_system.Input,2)
             for i = 1:size(string,2)
                 if ~isempty(strfind(final_system.Input{j}.Name,string{i}))
@@ -146,15 +131,7 @@ function final_system = BioSIMI_rename_species_only(input_subsystem,final_system
                 end
             end
         end
-    else
-        for j = 1:size(final_system.Input,2)
-            for i = 1:size(string,2)
-                if ~isempty(strfind(final_system.Input(j).Name,string{i}))
-                    rename(final_system.Input(j),erase(final_system.Input(j).Name,string{i}));
-                end
-            end
-        end
-    end
+
     % Add output of initial subsystem to created final subsystem and rename
     % it to remove its parent components subsystem's name   
     final_system.Output = input_subsystem.Output;

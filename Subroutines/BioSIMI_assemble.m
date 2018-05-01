@@ -1,12 +1,14 @@
 %% 13/09/2017 Miroslav Gasparek
-% Definition of the function that assembles final system creataed from interconnected
-% Subsystems for simulation
+% Definition of the function that assembles final system created from interconnected
+% Subsystems for simulation, provided that the given subsystem represents
+% an interconnection of the 
 
 % Required subroutine for analysis of interconnected biomolecular subsystems
 % in BioSIMI modeling toolbox
+% Used for the BioSIMI working with the TX-TL modeling toolbox
 
 function final_subsystem = BioSIMI_assemble(varargin)
-    if nargin == 1  % Default simulation time of 20s is used
+    if nargin == 1  % Default simulation time of 20s is used and the system is not renamed
         input_subsystem = varargin{1};
         input_subsystem = BioSIMI_rename_species_only(input_subsystem,input_subsystem.Name);
         txtl_runsim(input_subsystem.ModelObject);
@@ -26,7 +28,7 @@ function final_subsystem = BioSIMI_assemble(varargin)
         final_subsystem.Output = input_subsystem.Output;
         final_subsystem.SimSettings = input_subsystem.SimSettings;
         final_subsystem.Components = input_subsystem.Components;
-    elseif nargin == 2 % Default simulation time of 20s is used
+    elseif nargin == 2 % Default simulation time of 20s is used, final system is renamed
         input_subsystem = varargin{1};
         input_subsystem = BioSIMI_rename_species_only(input_subsystem,input_subsystem.Name);
         txtl_runsim(input_subsystem.ModelObject);

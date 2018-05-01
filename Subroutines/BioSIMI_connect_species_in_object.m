@@ -15,7 +15,7 @@
 
 % This requires addition to existing model object 'target_obj'
 
-function Subsystem = BioSIMI_connect_species_only(target_obj,compartment_name,subsystems_in,subsystem_out,system_name)
+function Subsystem = BioSIMI_connect_species_in_object(target_obj,compartment_name,subsystems_in,subsystem_out,system_name)
         
         % Make distinction between number of inputs provided for one input
         % and multiple inputs

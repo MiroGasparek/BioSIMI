@@ -1,4 +1,4 @@
-%% 22/09/2017 Miroslav Gasparek
+%% 20/04/2018 Miroslav Gasparek
 
 % Definition of a function that adds SimBiology objects contained within
 % specific object of class 'subsystem' that has been created by 'BioSIMI_make_subsystem'
@@ -10,10 +10,26 @@
 % Required subroutine for analysis of interconnected biomolecular subsystems
 % in BioSIMI modeling toolbox
 
+% Enables addition of the Multiple Input - Multiple Output system
+
 function BioSIMI_add_subsystem(target_obj,compartment_name,subsystem_call)
 
+% Check if all the species present in the subsystem have already been added
+% and renamed
+spec_count = 0;
+for q = 1:size(subsystem_call.Species,1)
+    for k = 1:size(target_obj.Species,1)
+        if strcmp(target_obj.Species(k).Name, subsystem_call.Species(q).Name)
+            spec_count = spec_count+1;
+        end
+    end
+end
+if spec_count == size(subsystem_call.Species,1)
+    disp(['The subsystem with name ',subsystem_call.Name,' has already been added to the Model Object.'])
+else
+    % Proceed to addition of the subsystem
     if ~(isempty(subsystem_call.Architecture))
-
+        
         % Rename compartment
         if (size(subsystem_call.Compartments,1)) == 1
             rename(subsystem_call.Compartments(1),compartment_name);
@@ -75,21 +91,43 @@ function BioSIMI_add_subsystem(target_obj,compartment_name,subsystem_call)
                 end
             end
         end
-        % Rename output if necessary (if TX-TL system is being added into vesicle)
-        output_count = 0;
-        for i = 1:size(subsystem_call.Species,1)
-            if strcmp(subsystem_call.Output.Name,subsystem_call.Species(i).Name)
-                output_count = output_count + 1;
+        %%
+        % Rename inputs if necessary (if TX-TL system is being added into vesicle)
+        % Also rename parent compartment of input to 'compartment_name' if necessary
+        if iscell(subsystem_call.Output)
+            for j = 1:size(subsystem_call.Output,2)
+                output_count = 0;
+                for i = 1:size(subsystem_call.Species,1)
+                    if strcmp(subsystem_call.Output{j}.Name,subsystem_call.Species(i).Name)
+                        output_count = output_count + 1;
+                    end
+                end
+                if output_count == 0
+                    subsystem_call.Output{j}.Name = [subsystem_call.Name,'_',subsystem_call.Output{j}.Name];
+                    if iscell(compartment_name)
+                        subsystem_call.Output{j}.Parent.Name = compartment_name{1};
+                    else
+                        subsystem_call.Output{j}.Parent.Name = compartment_name;
+                    end
+                end
+            end
+        else
+            output_count = 0;
+            for i = 1:size(subsystem_call.Species,1)
+                if strcmp(subsystem_call.Output.Name,subsystem_call.Species(i).Name)
+                    output_count = output_count + 1;
+                end
+            end
+            if output_count == 0
+                subsystem_call.output.Name = [subsystem_call.Name,'_',subsystem_call.Output.Name];
+                if iscell(compartment_name)
+                    subsystem_call.Output.Parent.Name = compartment_name{1}; % Assuming that compartment 'int' is the first one
+                else
+                    subsystem_call.Output.Parent.Name = compartment_name;
+                end
             end
         end
-        if output_count == 0
-            subsystem_call.Output.Name = [subsystem_call.Name,'_',subsystem_call.Output.Name];
-            if iscell(compartment_name)
-                subsystem_call.Output.Parent.Name = compartment_name{1}; % Assuming that compartment 'int' is the first one
-            else
-                subsystem_call.Output.Parent.Name = compartment_name;
-            end
-        end
+        
         %% Add events, parameters, reactions (and species) and rules to the parent model object
         % Add Events to parent model object
         if isempty(subsystem_call.Events)
@@ -131,9 +169,10 @@ function BioSIMI_add_subsystem(target_obj,compartment_name,subsystem_call)
                 ruls(i+size(target_obj.Reactions,1)) = copyobj(subsystem_call.Rules(i),target_obj);
             end
         end
+        
         % There is no need to add used species, as they were added with
         % Reaction objects
-
+        
         % We need to add species that are not used in reactions
         for i = 1:size(subsystem_call.Species,1)
             spec_count = 0;
@@ -151,9 +190,9 @@ function BioSIMI_add_subsystem(target_obj,compartment_name,subsystem_call)
                 end
             end
         end
-
+        
     else
         disp('Given subsystem does not exist or is not in the scope!')
     end
-
+end
 end

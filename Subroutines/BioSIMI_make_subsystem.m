@@ -1,4 +1,4 @@
-%% 07/09/2017 Miroslav Gasparek
+%% 20/04/2018 Miroslav Gasparek
 % Definition of the function that initializes subsystem with multiple inputs
 % from existing SimBiology model that can be accessed in the library of the
 % subsystems accessed through function 'BioSIMI_SearchSubsystemLibrary'
@@ -6,6 +6,7 @@
 % Required subroutine for analysis of interconnected biomolecular subsystems
 % in BioSIMI modeling toolbox
 
+% Enables definition of the Multiple Input - Multiple Output system
 function Subsystem = BioSIMI_make_subsystem(sub_name,input,output,subsystem_name)
                 % Code used if inserted subsystem is created from library of
                 % subsystems created. Subsystem is then inserted as string
@@ -45,6 +46,7 @@ function Subsystem = BioSIMI_make_subsystem(sub_name,input,output,subsystem_name
                     Subsystem.Species = SubsystemModelObj.Species;
                     % Subsystem.SimSettings = getconfigset(SubsystemModelObj);
                 end
+% Assignment of inputs and outputs
                 % Takes care of case with multiple inputs
                 if iscellstr(input)
                     Subsystem.Input = cell(1,size(input,2));
@@ -68,9 +70,23 @@ function Subsystem = BioSIMI_make_subsystem(sub_name,input,output,subsystem_name
                     if(isempty(Subsystem.Input))
                         disp('Input: No such species present in the selected subsystem!')
                     end
-                for i = 1:size(Subsystem.Species,1)
-                    if strcmp(Subsystem.Species(i).Name,output)
-                        Subsystem.Output = SubsystemModelObj.Species(i);
+%%
+                % Takes care of case with multiple outputs
+                if iscellstr(output)
+                    Subsystem.Output = cell(1,size(output,2));
+                    for j = 1:size(output,2)
+                        for i = 1:size(Subsystem.Species,1)
+                            if strcmp(Subsystem.Species(i).Name,output(j))
+                                Subsystem.Output{j} = SubsystemModelObj.Species(i);
+                            end
+                        end
+                    end
+                % Takes care of case with single output
+                else
+                    for i = 1:size(Subsystem.Species,1)
+                        if strcmp(Subsystem.Species(i).Name,output)
+                            Subsystem.Output = SubsystemModelObj.Species(i);
+                        end
                     end
                 end
                     if(isempty(Subsystem.Output))

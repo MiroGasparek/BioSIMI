@@ -24,7 +24,7 @@ clear, clc, close all;
             txtl_init
             fprintf('TX-TL subroutines were added to path. \n');
             fprintf('Model subsystems interconnection in TX-TL using common procedures. \n');
-            fprintf('For interconnection of subsystems, follow BioSIMI documentation. \n');
+            fprintf('For interconnection of subsystems, follow BioSIMI documentation (coming soon). \n');
             pwd;
         elseif strcmp(str,'N')
             path1 = mfilename('fullpath');

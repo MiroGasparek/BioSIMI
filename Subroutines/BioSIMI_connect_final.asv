@@ -1,0 +1,335 @@
+%% 23/04/2018 Miroslav Gasparek
+% Definition of a function that connects two subsystems by replacing the output(s)
+% of subsystem(s) by input(s) of subsystem(s) that these specified subsystems are connected to
+
+% Function is used for interconnection of TX-TL subsystems!
+
+% Function also creates new subsystem that represents interconnections of
+% the previously defined subsystems and creates a new model object that
+% contains all the species
+
+% Function enables analysis of subsystems with multiple inputs and multiple
+% outputs
+
+% Required subroutine for analysis of interconnected biomolecular subsystems
+% in BioSIMI modeling toolbox
+
+% If multiple input and output subsystems are inserted, they should be entered as a
+% cell: subsystems_in = {input_subsystem1, input_subsystem2,...},{output_subsystem1, output_subsystem2,...}
+
+function Subsystem = BioSIMI_connect_final(model_obj_name,compartment_name,subsystems_in,subsystems_out,system_name)
+
+%% Exection for multiple input/output subsystems
+
+% Check if the number of outputs of input subsystems matches the number of
+% inputs of the output subsystems
+sub_in_out_count = 0;
+sub_out_in_count = 0;
+for i = 1:size(subsystems_in,2)
+    sub_in_out_count = sub_in_out_count + size(subsystems_in{i}.Output,2);
+end
+for i = 1:size(subsystems_out,2)
+    sub_out_in_count = sub_out_in_count + size(subsystems_out{i}.Input,2);
+end
+if (sub_in_out_count ~= sub_out_in_count)
+    disp(['The number of outputs of the input subsystems does not match ',newline,...
+         'the number of inputs of the output subsystems!'])
+else
+%%
+% Check if all the species present in the subsystem have already been added
+% to the same compartment and renamed
+spec_count_in = 0;
+sub_count_in = 0;
+for q = 1:size(subsystems_in,2)
+    for k = 1:size(subsystems_in{q}.Species,1)
+        if ~isempty(strfind(subsystems_in{q}.Species(k).Name, [subsystems_in{q}.Name,'_'])) && strcmp(subsystems_in{q}.Species(k).Parent.Name,compartment_name)
+            spec_count_in = spec_count_in+1;
+        end
+        if (spec_count_in == size(subsystems_in{q}.Species,1))
+            disp(['The subsystem with name ',subsystems_in{q}.Name,' has already been added to the Model Object.'])
+            sub_count_in = sub_count_in+1;
+        end
+    end
+end
+
+spec_count_out = 0;
+sub_count_out = 0;
+for q = 1:size(subsystems_out,2)
+    for k = 1:size(subsystems_out{q}.Species,1)
+        if ~isempty(strfind(subsystems_out{q}.Species(k).Name, [subsystems_out{q}.Name,'_'])) && strcmp(subsystems_out{q}.Species(k).Parent.Name,compartment_name)
+            spec_count_out = spec_count_out+1;
+        end
+        if (spec_count_out == size(subsystems_out{q}.Species,1))
+            disp(['The subsystem with name ',subsystems_out{q}.Name,' has already been added to the Model Object.'])
+            sub_count_out = sub_count_out+1;
+        end
+    end
+end
+
+if ((sub_count_in + sub_count_out) == (size(subsystems_in,2)+size(subsystems_out,2) ))
+    disp(['The subsystems have already been connected in the model object ', model_obj_name])
+else
+%%
+    % Rename compartments of the input subsystems to the desired
+    % name of the compartment of the final system
+    for q = 1:size(subsystems_in,2)
+        if (size(subsystems_in{q}.Compartments,1)) == 1
+            rename(subsystems_in{q}.Compartments(1),compartment_name);
+        else
+            for i = 1:size(subsystems_in{q}.Compartments,1)
+                rename(subsystems_in{q}.Compartments(i),string(compartment_name(i)));
+            end
+        end
+        % Rename compartments of the output subsystems to the desired
+        % name of the compartment of the final system
+        if (size(subsystems_out{q}.Compartments,1)) == 1
+            rename(subsystems_out{q}.Compartments(1),compartment_name);
+        else
+            for i = 1:size(subsystems_out{q}.Compartments,1)
+                rename(subsystems_out{q}.Compartments(i),string(compartment_name(i)));
+            end
+        end
+    end
+    
+    % Create resulting system as object of class 'subsystem'
+    Subsystem = subsystem;
+    % Create a new SimBiology Object
+    model_obj = sbiomodel(model_obj_name);
+    % Add compartments to the created model object
+    for i = 1:size(compartment_name,1)
+        comp(i) = addcompartment(model_obj,compartment_name);
+    end
+    % Add subsystems comprising final system as Components of the final
+    % system
+    Subsystem.Components = cell(1,size(subsystems_in,2));
+    for q = 1:size(subsystems_in,2)
+        Subsystem.Components{q} = subsystems_in{q};
+    end
+    for k = 1:size(subsystems_out,2)
+        Subsystem.Components{q+k} = subsystems_out{k};
+    end
+    % Select the compartment of the final model object where reactions
+    % are present
+    for i = 1:size(model_obj.Compartments,1)
+        if strcmp(model_obj.Compartments(i).Name,compartment_name)
+            Compartment = model_obj.Compartments(i).Name;
+        end
+    end
+    if isempty(Compartment)
+        error(['Compartment ',compartment_name,' does not exist in the model object!']);
+    end
+    
+%%
+    % Add Species of the input subsystems to the parent model object
+    for q = 1:size(subsystems_in,2)
+        if isempty(model_obj.Species)
+            for i = 1:size(subsystems_in{q}.Species,1)
+                specs_handle = get(subsystems_in{q}.Species(i));
+                for j = 1:size(model_obj.Compartments,1)
+                    if strcmp(model_obj.Compartments(j).Name,specs_handle.Parent.Name)
+                        specs(i) = copyobj(subsystems_in{q}.Species(i),model_obj.Compartments(j));
+                        rename(model_obj.Species(i),[subsystems_in{q}.Name,'_',model_obj.Species(i).Name]);
+                    end
+                end
+            end
+        else
+            specs_size = size(model_obj.Species,1);
+            for i = 1:size(subsystems_in{q}.Species,1)
+                specs_handle = get(subsystems_in{q}.Species(i));
+                for j = 1:size(model_obj.Compartments,1)
+                    if strcmp(model_obj.Compartments(j).Name,specs_handle.Parent.Name)
+                        specs(i+specs_size) = copyobj(subsystems_in{q}.Species(i),model_obj.Compartments(j));
+                        rename(model_obj.Species(i+specs_size),[subsystems_in{q}.Name,'_',model_obj.Species(i+specs_size).Name]);
+                    end
+                end
+            end
+        end
+    end
+%%
+    % Add Species of the output subsystems to the parent model object
+    for k = 1:size(subsystems_out,2)
+        if isempty(model_obj.Species)
+            for i = 1:size(subsystems_out{k}.Species,1)
+                specs_handle = get(subsystems_out{k}.Species(i));
+                for j = 1:size(model_obj.Compartments,1)
+                    if strcmp(model_obj.Compartments(j).Name,specs_handle.Parent.Name)
+                        specs(i) = copyobj(subsystems_out{k}.Species(i),model_obj.Compartments(j));
+                        rename(model_obj.Species(i),[subsystems_out{k}.Name,'_',model_obj.Species(i).Name]);
+                    end
+                end
+            end
+        else
+            specs_size = size(model_obj.Species,1);
+            for i = 1:size(subsystems_out{k}.Species,1)
+                specs_handle = get(subsystems_out{k}.Species(i));
+                for j = 1:size(model_obj.Compartments,1)
+                    if strcmp(model_obj.Compartments(j).Name,specs_handle.Parent.Name)
+                        specs(i+specs_size) = copyobj(subsystems_out{k}.Species(i),model_obj.Compartments(j));
+                        rename(model_obj.Species(i+specs_size),[subsystems_out{k}.Name,'_',model_obj.Species(i+specs_size).Name]);
+                    end
+                end
+            end
+        end
+    end
+    %% MIGHT NOT BE NEEDED
+%{
+    % Add prefix of input subsystems' names to the name of particular
+    % species in the subsystem
+    for q = 1:size(subsystems_in,2)
+        for i = 1:size(subsystems_in{q}.Species,1)
+            rename(subsystems_in{q}.Species(i),[subsystems_in{q}.Name,'_',subsystems_in{q}.Species(i).Name]);
+        end
+    end
+    % Add prefix of output subsystems' names to the name of particular
+    % species in the subsystem
+    for k = 1:size(subsystems_out,2)
+        for i = 1:size(subsystems_out{k}.Species,1)
+            rename(subsystems_out{k}.Species(i),[subsystems_out{k}.Name,'_',subsystems_out{k}.Species(i).Name]);
+        end
+    end
+%}    
+%%
+
+% User should determine which 'Output' species of input subsystem connect
+% to which 'Input' species of the output subsystems
+
+% Open dialog window for the interconnection of the subsystems
+
+% Display the 'Output' species of the input subsystem(s)
+str0in = string(['The Output species of the Input subsystem(s):',newline, newline]);
+str1in = '';
+str2in = '';
+count1 = 1;
+for i = 1:size(subsystems_in,2)
+    str2in = string(['Subsystem ''',subsystems_in{i}.Name,''':',newline]);
+    for j = 1:size(subsystems_in{i}.Output,2)
+        str_temp = string([num2str(count1),') ',subsystems_in{i}.Output{j}.Name, newline]);
+        count1 = count1+1;
+        str1in = strcat(str1in,str_temp);
+    end
+    str_in = strcat(str2in,str1in);
+end
+% Display the 'Input' species of the output subsystems(s)
+str0out = string([newline,'The Input species of the Output subsystem(s):',newline,newline]);
+str1out = '';
+str2out = '';
+count2 = 1;
+for i = 1:size(subsystems_out,2)
+    str2out = string(['Subsystem ''',subsystems_out{i}.Name,''':',newline]);
+    for j = 1:size(subsystems_out{i}.Input,2)
+        str_temp = string([char(64+count2),') ',subsystems_out{i}.Input{j}.Name, newline]);
+        count2 = count2+1;
+        str1out = strcat(str1out,str_temp);
+    end
+    str_out = strcat(str2out,str1out);
+end
+
+% Make the dialog window for the subsystems interconnection and request the
+% user input
+prompt = strcat(str0in, str_in, str0out, str_out);
+dlg_title = 'Input/Output Matching';
+num_lines = [1 300];
+
+% If no answer is added, the subsystems are connected in the order that
+% they are displayed, i. e. 1A, 2B,3C, ...
+for i = 1:size(subsystems_in,2)
+    str_def = [num2str(i),char(64+i),' ']
+end
+DefAns = {''};
+options.WindowStyle = 'normal';
+options.Interpreter = 'none';
+inout_answer = inputdlg(prompt,dlg_title,num_lines,DefAns,options);
+inout_cell = strsplit(string(inout_answer));
+
+%%
+    % Set initial amounts of input species of the output subsystems to 0
+    for j = 1:size(subsystems_out,2)
+        for q = 1:size(subsystems_out{j}.Input,2)
+            for i = 1:size(model_obj.Species,1)
+                if strcmp(model_obj.Species(i).Name,subsystems_out{j}.Input{q}.Name)
+                    model_obj.Species(i).InitialAmount = 0;
+                end
+            end
+        end
+    end
+    % Set parameters of the final subsystem
+    Subsystem.ModelObject = model_obj;
+    % Set Type of the final system
+    %(contains all the subsystems in the final system)
+    Type_in = cell(1,size(subsystems_in,2));
+    for q = 1:size(subsystems_in,2)
+        Type_in{q} = subsystems_in{q}.Type;
+    end
+    Type_out = cell(1,size(subsystems_out,2));
+    for q = 1:size(subsystems_out,2)
+        Type_out{q} = subsystems_out{q}.Type;
+    end
+    Subsystem.Type = ['(',strrep(strjoin(Type_in,' '),' ',' + '),') + (',strrep(strjoin(Type_out,' '),' ',' + '),')'];
+    % Assign Name to final Subsystem
+    Subsystem.Name = system_name;
+    % Set Architecture of the final system
+    %(contains architectures of all subsystems in the final system)
+    Architecture_in = cell(1,size(subsystems_in,2));
+    for q = 1:size(subsystems_in,2)
+        Architecture_in{q} = subsystems_in{q}.Architecture;
+    end
+    Architecture_out = cell(1,size(subsystems_in,2));
+    for k = 1:size(subsystems_out,2)
+        Architecture_out{k} = subsystems_out{k}.Architecture;
+    end
+    Subsystem.Architecture = ['(',strrep(strjoin(Architecture_in,' '),' ',' + '),') + (',strrep(strjoin(Architecture_out,' '),' ',' + '),')'];
+    Subsystem.Compartments = model_obj.Compartments;
+    Subsystem.Events = model_obj.Events;
+    Subsystem.Parameters = model_obj.Parameters;
+    Subsystem.Reactions = model_obj.Reactions;
+    Subsystem.Rules = model_obj.Rules;
+    Subsystem.Species = model_obj.Species;
+    % Assign Inputs to final Subsystem (Inputs of the individual input subsystems)
+    input_index = 1;
+    for q = 1:size(subsystems_in,2)
+        for l = 1:size(subsystems_in{q}.Input,2)
+            Subsystem.Input{input_index} = subsystems_in{q}.Input{l};
+            input_index = input_index+1;
+        end
+    end
+    % Assign Outputs to final Subsystem (Outputs of the individual output subsystems)
+    output_index = 1;
+    for k = 1:size(subsystems_out,2)
+        for l = 1:size(subsystems_out{k}.Output,2)
+            Subsystem.Output{output_index} = subsystems_out{k}.Output{l};
+            output_index = output_index+1;
+        end
+    end
+    % Add user data containing information for creation of simulation
+    % into final subsystem
+    % The most important info is 'DNAinfo' and this is concatenated
+    % into one cell containing info from multiple subsystems
+    % Information about 'ReactionConfig', 'FirstRun' and 'Vesicule' are
+    % taken from the first subsystem, as it is assumed that these are
+    % the same for all used subsystems
+    
+    % ReactionConfig is the same for all subsystems
+    Subsystem.ModelObject.UserData.ReactionConfig = subsystems_in{1}.ModelObject.UserData.ReactionConfig;
+    % DNAinfo is different for the subsystems
+    DNAinfo_in = subsystems_in{1}.ModelObject.UserData.DNAinfo;
+    DNAinfo_out = subsystems_out{1}.ModelObject.UserData.DNAinfo;
+    if size(subsystems_in,2) > 1
+        for q = 1:(size(subsystems_in,2)-1)
+            DNAinfo_in = [DNAinfo_in, subsystems_in{q+1}.ModelObject.UserData.DNAinfo];
+        end
+    end
+    DNAinfo_out = subsystems_out{1}.ModelObject.UserData.DNAinfo;
+    if size(subsystems_out,2) > 1
+        for k = 1:(size(subsystems_out,2)-1)
+            DNAinfo_out = [DNAinfo_out, subsystems_out{k+1}.ModelObject.UserData.DNAinfo];
+        end
+    end
+    % Concatenate the DNAinfo
+    Subsystem.ModelObject.UserData.DNAinfo = [DNAinfo_in, DNAinfo_out];
+    % FirstRun is the same for all subsystems
+    Subsystem.ModelObject.UserData.FirstRun = subsystems_in{1}.ModelObject.UserData.FirstRun;
+    % Vesicule is the same for all subsystems
+    Subsystem.ModelObject.UserData.Vesicule = subsystems_in{1}.ModelObject.UserData.Vesicule;
+end
+end
+end

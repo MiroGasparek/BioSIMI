@@ -5,6 +5,8 @@
 % Function also creates new subsystem that represents interconnections of
 % the previously defined subsystems
 
+% Function requires that the 'target object' (vesicle) has been already
+% created!!!
 % Function enables analysis of subsystems with multiple inputs
 
 % Required subroutine for analysis of interconnected biomolecular subsystems

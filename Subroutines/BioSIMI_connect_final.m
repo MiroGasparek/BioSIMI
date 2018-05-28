@@ -188,20 +188,20 @@ else
         end
     end
 %}    
-%%
+%% INPUT/OUTPUT MATCHING
 
 % User should determine which 'Output' species of input subsystem connect
 % to which 'Input' species of the output subsystems
 
-% Open dialog window for the interconnection of the subsystems
-
 % Display the 'Output' species of the input subsystem(s)
-str0in = string(['The Output species of the Input subsystem(s):',newline, newline]);
+io_title = ['****Input/Output Matching****', newline];
+
+str0in = string([newline, 'The Output species of the Input subsystem(s):',newline, newline]);
 str1in = '';
 str2in = '';
 count1 = 1;
 for i = 1:size(subsystems_in,2)
-    str2in = string(['Subsystem ''',subsystems_in{i}.Name,''':',newline]);
+    str2in = string(['Subsystem ''',subsystems_in{i}.Name,''' :',newline]);
     for j = 1:size(subsystems_in{i}.Output,2)
         str_temp = string([num2str(count1),') ',subsystems_in{i}.Output{j}.Name, newline]);
         str1in = strcat(str1in,str_temp);
@@ -215,7 +215,7 @@ str1out = '';
 str2out = '';
 count2 = 1;
 for i = 1:size(subsystems_out,2)
-    str2out = string(['Subsystem ''',subsystems_out{i}.Name,''':',newline]);
+    str2out = string(['Subsystem ''',subsystems_out{i}.Name,''' :',newline]);
     for j = 1:size(subsystems_out{i}.Input,2)
         str_temp = string([char(64+count2),') ',subsystems_out{i}.Input{j}.Name, newline]);
         str1out = strcat(str1out,str_temp);
@@ -223,12 +223,10 @@ for i = 1:size(subsystems_out,2)
     end
     str_out = strcat(str2out,str1out);
 end
-
-% Make the dialog window for the subsystems interconnection and request the
-% user input
-prompt = strcat(str0in, str_in, str0out, str_out);
-dlg_title = 'Input/Output Matching';
-num_lines = [1 200];
+% Final string to display
+io_string_final = strcat(io_title, newline, str0in, str_in, str0out, str_out);
+disp(io_string_final);
+prompt = ['Please match the input and output subsystems: ', newline];
 
 % If no answer is added, the subsystems are connected in the order that
 % they are displayed, i. e. 1A, 2B,3C, ...
@@ -237,15 +235,45 @@ count3 = 1;
 for i = 1:size(subsystems_in,2)
     for j = 1:size(subsystems_out{i}.Input,2)
         str_temp = [num2str(count3),char(64+count3),' '];
-        str_def = strcat(str_def,{' '}, str_temp)
+        str_def = strcat(str_def,{' '}, str_temp);
         count3 = count3+1;
     end
 end
-DefAns = str_def;
-options.WindowStyle = 'normal';
-options.Interpreter = 'none';
-inout_answer = inputdlg(prompt,dlg_title,num_lines,DefAns,options);
-inout_cell = strsplit(string(inout_answer));
+io_string_def = strtrim(str_def);
+
+
+% Request user input in the command line
+user_io_string = input(prompt, 's');
+if isempty(user_io_string)
+    user_io_string = io_string_def;
+end
+
+% The solution with the dialog box prompt does not seem to work optimally
+%{
+% % Make the dialog window for the subsystems interconnection and request the
+% % user input
+% prompt = strcat(str0in, str_in, str0out, str_out);
+% dlg_title = 'Input/Output Matching';
+% num_lines = [1 100];
+% 
+% % If no answer is added, the subsystems are connected in the order that
+% % they are displayed, i. e. 1A, 2B,3C, ...
+% str_def = '';
+% count3 = 1;
+% for i = 1:size(subsystems_in,2)
+%     for j = 1:size(subsystems_out{i}.Input,2)
+%         str_temp = [num2str(count3),char(64+count3),' '];
+%         str_def = strcat(str_def,{' '}, str_temp);
+%         count3 = count3+1;
+%     end
+% end
+% 
+% DefAns = strtrim(str_def);
+% options.WindowStyle = 'normal';
+% options.Interpreter = 'none';
+% inout_answer = inputdlg(prompt,dlg_title,num_lines,DefAns,options);
+% inout_cell = strsplit(string(inout_answer));
+%}
 
 %%
     % Set initial amounts of input species of the output subsystems to 0
